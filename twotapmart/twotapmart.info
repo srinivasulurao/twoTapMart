@@ -1,0 +1,10 @@
+name = Twotap API Shopping Cart.
+description = This is an API for the twotap app to purchase the api from mobile app, using webservices.
+core = 6.x
+package = Two Tap api
+
+; Information added by drupal.org packaging script on 2009-08-18
+version = "6.x-1.0"
+core = "6.x"
+project = "twotapmart"
+datestamp = "1250616168"

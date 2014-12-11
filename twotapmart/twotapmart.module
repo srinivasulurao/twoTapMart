@@ -1,0 +1,243 @@
+<?php
+
+//Here we are just going to implement the hooks.
+function twotapmart_menu(){
+    $items=array();
+//    $items['admin/twotap-products'] = array(
+//    'title' => t('Products'),
+//    'page callback' => 'twotapProductList',
+//    'file'=> 'twoTapMart.inc',
+//    'access arguments' => array('access content'),
+//    'type' => MENU_SUGGESTED_ITEM,
+//    ); 
+//
+    $items['product/%'] = array(
+    'title' => t('Product Details'),
+    'page callback' => 'getSingleProductInfo',
+    'file'=> 'twoTapMart.inc',
+    'page arguments'=>array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
+    );
+    
+    $items['add-to-cart']=array(
+    'title' => t('Product Details'),
+    'page callback' => 'cartBuilder',
+    'file'=> 'twoTapMart.inc',
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,  
+    );
+
+    $items['cart']=array(
+    'title' => t('My Cart'),
+    'page callback' => 'cartPage',
+    'file'=> 'twoTapMart.inc',
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,   
+    );
+
+    $items['checkout']=array(
+    'title' => t('Confirm Checkout'),
+    'page callback' => 'confirmCheckoutPage',
+    'file'=> 'twoTapMart.inc',
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
+    );
+
+    $items['checkout-status']=array(
+    'title' => t('Checkout Status'),
+    'page callback' => 'getCurrentCheckoutStatus',
+    'file'=> 'twoTapMart.inc',
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
+    );
+
+    $items['admin/two-tap-settings/two-tap-orders']=array(
+    'title' => t('TwoTap Orders'),
+    'page callback' => 'showOrders',
+    'file'=> 'twoTapBackend.inc',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_SUGGESTED_ITEM,  
+    );
+
+    $items['admin/two-tap-settings']=array(
+    'title' => t('TwoTap Settings'),
+    'page callback' => 'twoTapSettings',
+    'file'=> 'twoTapBackend.inc',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_SUGGESTED_ITEM,  
+    );
+
+
+    $items['admin/view-order/%']=array(
+    'title' => t('Order Information'),
+    'page callback' => 'getSingleOrderInfo',
+    'file'=> 'twoTapBackend.inc',
+    'page arguments'=>array(2),
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
+    );
+
+
+    $items['order-history']=array(
+    'title' => t('Order History'),
+    'page callback' => 'showCustomerOrders',
+    'file'=> 'twoTapMart.inc',
+    'page arguments'=>array(2),
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
+    );
+
+     $items['view-order/%']=array(
+    'title' => t('Order Information'),
+    'page callback' => 'getSingleOrderInfo',
+    'file'=> 'twoTapMart.inc',
+    'page arguments'=>array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
+    );
+
+    $items['ajax-dep-products']=array(
+    'title' => t('Order Information'),
+    'page callback' => 'getDepthProducts',
+    'file'=> 'twoTapMart.inc',
+    'page arguments'=>array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
+    );
+
+    $items['confirm-purchase']=array(
+    'title' => t('Confirm Your Order Purchase'),
+    'page callback' => 'confirmPurchaseTwoTap',
+    'file'=> 'twoTapMart.inc',
+    'access arguments' => array('access content'),
+    );
+
+
+  return $items;
+	}
+        
+function twotapmart_init(){
+    global $user;
+    $browser=$_SERVER['HTTP_USER_AGENT'];
+    $node=$_REQUEST['q'];
+    $arg=arg();
+    $is_admin_page=(in_array("admin",$arg))?1:0;
+    $is_admin_page=(in_array("edit",$arg))?1:$is_admin_page;
+    if(!$is_admin_page and $node!='add-to-cart' and $node!="ajax-dep-products"):
+    ourPageRedirection();//this function will redirect the node to our page, if it belongs to products.
+    addCss();
+    endif;
+
+    //Have to create a new setting for the watchdog.
+
+    //Once the user comes online he has to take the session from the twoTap watchdog.
+    //We don't have much data in session of drupal, they are using a different approach it seems.
+
+    if(!$_SESSION['twotap_online'] and $user->uid): //only first logged in user should use this.
+        $result=db_query("SELECT * FROM twotap_cart_watchdog WHERE user_id='{$user->uid}'");
+        while($rec=db_fetch_object($result)):
+            $session=unserialize(base64_decode($rec->session)); //easy way to store the huge data.
+            $_SESSION=$session;
+            break;
+        endwhile;
+        $_SESSION['twotap_online']=1;
+    endif;
+   
+        if($_SESSION['twotap_online'] and $user->uid): //IF THE BROWSER CHANGES THEN ONLY APPLY THE CHANGES.
+        $refreshSession=db_query("SELECT * FROM twotap_cart_watchdog WHERE user_id='{$user->uid}'");
+        while($rec=db_fetch_object($refreshSession)):
+            $session=unserialize(base64_decode($rec->session)); //easy way to store the huge data
+            if($rec->browser!=$browser)
+            $_SESSION=$session;
+            break;
+        endwhile;
+    endif;
+
+
+    $results=db_query("SELECT * FROM twotap_cart_watchdog WHERE user_id='{$user->uid}'");
+    $twotap_watchdog=db_result($results);
+    if(!$twotap_watchdog){
+    $base_session=base64_encode(serialize($_SESSION));
+    db_query("INSERT into twotap_cart_watchdog SET user_id='{$user->uid}', session='$base_session',browser='$browser'");
+    }
+    else
+    {
+    $base_session=base64_encode(serialize($_SESSION));
+    db_query("UPDATE twotap_cart_watchdog SET session='$base_session',browser='$browser' WHERE user_id='{$user->uid}'");
+    }
+
+    
+
+
+}
+
+function twotapmart_user_login(&$edit, $account){
+    global $user;
+//We have destroy the products cart, as of now.
+    // $_SESSION['twotap_collector']="";
+    // $_SESSION['twoTapCart']="";
+    // $_SESSION['twoTapCartSorted']="";
+    
+}
+function twotapmart_user_logout($account){
+    unset($_SESSION);
+}
+
+function ourPageRedirection(){
+    global $base_url;
+    //Our base Node Type products.
+    $q=$_REQUEST['q']; //Node Fetcher.
+    $result=db_query("SELECT * FROM url_alias WHERE dst='$q'");
+    while($rec=db_fetch_object($result)):
+     $nodeId=str_replace("node/","", $rec->src);
+     if(checkNodeType($nodeId)):
+        header("Location:$base_url/product/$nodeId");
+     endif;
+    endwhile;
+}
+
+function checkNodeType($nodeId){
+    //It has to be a product node.
+    $result=db_query("SELECT * FROM node WHERE nid='$nodeId' and type='product'");
+    while($rec=db_fetch_object($result)):
+        return true; // if it goes into the loop that means the there is a link which exists.
+    endwhile;
+    
+    return false; 
+}
+
+function addCss()
+{
+    $css="<style>
+    .twotap-product-img img{
+        height:288px !important;
+        width:192px !important;
+}
+
+.view-Products td{
+text-align:center;
+font-family:candara;
+}
+
+.view-Products{
+border-bottom:1px solid lightgrey;
+margin-bottom:20px;
+padding-bottom:20px;
+}
+
+.view-Products .views-field-field-name-value{
+display:block;
+}
+
+#mainContent h2{
+margin:20px;
+}
+
+
+</style>";
+   
+    echo $css;
+}
+
+?>

@@ -1,0 +1,37 @@
+h2{
+	padding:20px !important;
+}
+
+.viewProduct,.addToCart{
+top:45px !important;
+position:relative !important;
+text-decoration:none !important;
+float:right !important;
+color:white !important;
+background:black !important;
+padding:10px 25px !important;
+}
+
+#cartOverlay{
+    background: none repeat scroll 0 0 black;
+    display: none;
+    height: 100%;
+    opacity: 0.7;
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
+#cartDiv{
+    background: none repeat scroll 0 0 white;
+    border: 15px solid black;
+    border-radius: 20px;
+    display: none;
+    height: 370px;
+    left: 37%;
+    line-height: 10px;
+    padding: 10px 30px 30px;
+    position: fixed;
+    top: 15%;
+    width: 350px;
+    z-index: 501;
+}
