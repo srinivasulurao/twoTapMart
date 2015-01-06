@@ -110,7 +110,9 @@ function twotapmart_menu(){
     'title' => t('Confirm Your Order Purchase'),
     'page callback' => 'confirmPurchaseTwoTap',
     'file'=> 'twoTapMart.inc',
+    'page arguments'=>array(1),
     'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
     );
 
 
@@ -124,9 +126,9 @@ function twotapmart_init(){
     $arg=arg();
     $is_admin_page=(in_array("admin",$arg))?1:0;
     $is_admin_page=(in_array("edit",$arg))?1:$is_admin_page;
-    if(!$is_admin_page and $node!='add-to-cart' and $node!="ajax-dep-products"):
+    if(!$is_admin_page and $node!='add-to-cart' and $node!="ajax-dep-products" and !$_REQUEST['task']):
     ourPageRedirection();//this function will redirect the node to our page, if it belongs to products.
-    addCss();
+    //addCss();
     endif;
 
     //Have to create a new setting for the watchdog.
@@ -209,35 +211,35 @@ function checkNodeType($nodeId){
 
 function addCss()
 {
-    $css="<style>
-    .twotap-product-img img{
-        height:288px !important;
-        width:192px !important;
-}
-
-.view-Products td{
-text-align:center;
-font-family:candara;
-}
-
-.view-Products{
-border-bottom:1px solid lightgrey;
-margin-bottom:20px;
-padding-bottom:20px;
-}
-
-.view-Products .views-field-field-name-value{
-display:block;
-}
-
-#mainContent h2{
-margin:20px;
-}
-
-
-</style>";
-   
-    echo $css;
+//    $css="<style>
+//    .twotap-product-img img{
+//        height:288px !important;
+//        width:192px !important;
+//}
+//
+//.view-Products td{
+//text-align:center;
+//font-family:candara;
+//}
+//
+//.view-Products{
+//border-bottom:1px solid lightgrey;
+//margin-bottom:20px;
+//padding-bottom:20px;
+//}
+//
+//.view-Products .views-field-field-name-value{
+//display:block;
+//}
+//
+//#mainContent h2{
+//margin:20px;
+//}
+//
+//
+//</style>";
+//   
+//    echo $css;
 }
 
 ?>
