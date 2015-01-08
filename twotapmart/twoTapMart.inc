@@ -515,7 +515,11 @@ function checkoutPageBuilder($apiData=""){
                 $depthSelect.="<option value='$optVal' $optionValSelected>$text</option>";
                 $depthCounter++;
               endforeach;
+<<<<<<< HEAD
               $depthSelect=" <b>".ucfirst($depthKey)."</b> <select name='$productId"."_$depthKey' required='required'><option value=''>-SELECT-</option>$depthSelect</select>";
+=======
+              $depthSelect=" <b>".ucfirst($depthKey)."</b> <select name='$productId"."_$depthKey'><option value=''>-SELECT-</option>$depthSelect</select>";
+>>>>>>> origin/master
               }
               $subOption=($depth)?"<span id='$attributeName'>$depthSelect</span>":"<span id='$attributeName'></span>";
               $available_options.="</select><br>$subOption";
@@ -581,7 +585,11 @@ function getDepthProducts(){
     $html.="<option value='$optVal'>$text</option>";
     endforeach;
 
+<<<<<<< HEAD
     $html=($depthisThere)?" <b>".ucfirst($innerKey)."</b> <select name='$productId"."_$innerKey' required='required'><option value=''>-SELECT-</option>$html</select>":"";
+=======
+    $html=($depthisThere)?" <b>".ucfirst($innerKey)."</b> <select name='$productId"."_$innerKey'><option value=''>-SELECT-</option>$html</select>":"";
+>>>>>>> origin/master
     echo $html;
     exit;
     endif;
@@ -725,12 +733,15 @@ function getShippingAddressDetails(){
 function userInfoTable(){
   global $base_url,$user;
   unset($_SESSION['twoTapCart']['price_estimate']);
+<<<<<<< HEAD
     
   if(!$_SESSION['twoTapCart']['allProductsAvailable']):
     header("Location:$base_url/cart");
     exit;
   endif;
     
+=======
+>>>>>>> origin/master
 //debug($_POST);
 //debug($_SESSION['twoTapCart']);
 
