@@ -21,8 +21,9 @@ function showOrders(){
     $status="Cancel";
     $pd=unserialize(base64_decode($key->purchase_details));
     //debug($pd);
+    $grand_total=number_format($pd['price_estimate']['final_price'],2);
     $pd=getOrderDetails($pd);
-    $grand_total=number_format($pd['grandTotal'],2);
+    //$grand_total=number_format($pd['grandTotal'],2); 
     $delete="<a href='javascript:void(0)' onclick='deleteOrderHistory($key->order_id)'>Delete</a>";
     $edit="<a href='$base_url/admin/view-order/$key->order_id'>Edit</a>";
     $customer=user_load($key->user_id);
@@ -31,7 +32,7 @@ function showOrders(){
 	$css="<style>
 	table{
 		margin-top:15px;
-		font-family:trebuchet ms
+		font-family:lucida sans unicode;
 	}
 		th,td{
 			padding:10px;
@@ -101,7 +102,7 @@ label{
 #mainContent h1{
     border-bottom: 1px solid lightgrey;
     color: white;
-    font-family: trebuchet ms;
+    font-family: lucida sans unicode;
     padding: 5px 10px;
     text-shadow:0 0 10px forestgreen;
     background:black;
@@ -117,10 +118,10 @@ label{
 	margin:20px;
 }
 label{
-	width:100px;
+	width:120px;
 	display:inline-block;
 	padding:10px;
-	font-family:trebuchet ms;
+	font-family:lucida sans unicode;
 	font-weight:bold;
 }
 </style>
@@ -149,6 +150,11 @@ $order.="<label>Purchased On </label>:".date("m-d-Y h:i A",strtotime($rec->purch
 $order.="<h1>Cart Information</h1>";
 $order.=miniCart(unserialize(base64_decode($rec->purchase_details)));
 $pd=unserialize(base64_decode($rec->purchase_details));
+$order.="<h1>Purchase Estimate</h1>";
+$order.="<label>Shipping Price</label>:$".number_format($pd['price_estimate']['shipping_price'],2)."<br>";
+$order.="<label>Sales Tax</label>:$".number_format($pd['price_estimate']['sales_tax'],2)."<br>";
+$order.="<label>Final Price</label>:$".number_format($pd['price_estimate']['final_price'],2)."<br><br>";
+
 $order.="<h1>Address Details</h1>";
 $order.="<table style='margin:30px;width:94%'>";
 $order.="<tr><th>Billing Address</th><th>Shipping Address</th></tr>";
@@ -174,7 +180,7 @@ $order.="<h1>Shipping Option</h1>";
 $order.="<div style='background:lightyellow;margin:30px;padding:10px;'>{$pd['billing_address']['chosen_shipping']}</div>";
 $order.=$css;
 $order.="</form>";
-$order="<div style='width:94%;margin:auto;font-family:trebuchet ms'>$order</div>";
+$order="<div style='width:94%;margin:auto;font-family:lucida sans unicode'>$order</div>";
 return $order;
 endwhile;
 }
@@ -182,7 +188,7 @@ endwhile;
 
 function miniCart($cart){
   //debug($cart);
-  $smallCart.="<table style='width:94%;font-family:trebuchet ms;margin:30px;font-size:small;box-shadow:0 0 10px;color:grey'>";
+  $smallCart.="<table style='width:94%;font-family:lucida sans unicode;margin:30px;font-size:small;box-shadow:0 0 10px;color:grey'>";
   $smallCart.="<tr><th>Description</th><th>Brand</th><th>Quantity</th><th>Price/Qty</th><th>Subtotal</th></tr>";
   foreach($cart as $key):
   $options="";
@@ -201,6 +207,10 @@ function miniCart($cart){
   endforeach;
   $grand_total=number_format($grand_total,2);
   $smallCart.="<tr style='background:steelblue;color:white;'><td colspan='4' align='right'>Grand Total :</td><td>$$grand_total</td></tr>";
+  if($cart['price_estimate']['final_price']):
+  $smallCart.="<tr style='background:steelblue;color:white;border-top:1px solid lightgrey;font-weight:bold'><td colspan='4' align='right'>Final Price (Including Taxes):</td><td>$".number_format($cart['price_estimate']['final_price'],2)."</td></tr>";
+  endif;
+
   $smallCart.="</table>";
   $smallCart.="
 <style>
@@ -302,7 +312,7 @@ $html.="<input type='text' name='twotap_password' value='$twotap_password'><br>"
 $html.="<input type='submit' name='twotap_setting_submit' value='SUBMIT' class='form-submit'>";
 
 $html.="</form>";
-$html="<hr><div style='width:94%;margin:auto;padding-top:10px;font-family:trebuchet ms'>$html</div>";
+$html="<hr><div style='width:94%;margin:auto;padding-top:10px;font-family:lucida sans unicode'>$html</div>";
 $html.=ini_get("upload_tmp_dir");
 return $html.$css;
 }

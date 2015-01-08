@@ -110,7 +110,9 @@ function twotapmart_menu(){
     'title' => t('Confirm Your Order Purchase'),
     'page callback' => 'confirmPurchaseTwoTap',
     'file'=> 'twoTapMart.inc',
+    'page arguments'=>array(1),
     'access arguments' => array('access content'),
+    'type' => MENU_SUGGESTED_ITEM,
     );
 
 
@@ -121,12 +123,16 @@ function twotapmart_init(){
     global $user;
     $browser=$_SERVER['HTTP_USER_AGENT'];
     $node=$_REQUEST['q'];
+    
+    if($node=="products"):
+    addCss();
+    endif;
+    
     $arg=arg();
     $is_admin_page=(in_array("admin",$arg))?1:0;
     $is_admin_page=(in_array("edit",$arg))?1:$is_admin_page;
-    if(!$is_admin_page and $node!='add-to-cart' and $node!="ajax-dep-products"):
+    if(!$is_admin_page and $node!='add-to-cart' and $node!="ajax-dep-products" and !$_REQUEST['task']):
     ourPageRedirection();//this function will redirect the node to our page, if it belongs to products.
-    addCss();
     endif;
 
     //Have to create a new setting for the watchdog.

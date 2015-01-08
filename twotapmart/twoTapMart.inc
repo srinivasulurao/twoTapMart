@@ -54,9 +54,9 @@ function cartBuilder(){
     //First check Whether the product is available or not, then keep the product inside the twotap collector.
        $productAvailable=checkProductAvailability($_REQUEST['productId']);
        if(!$productAvailable){
-         echo"<div style='text-align:center;line-height:30px;'>";
+         echo"<div style='text-align:center;line-height:22px;'>";
          echo"<font color='red' size='2'><span style='color:tomato'> <b style='border-radius: 10px; padding: 2px 4px; background: none repeat scroll 0% 0% pink;'>&#x2718;</b></span> Sorry, The product is out of stock ! </font><br>";
-         echo"<a href='$base_url/products'>Continue Shopping</a> | <a href='$base_url/cart'>Go to Cart</a>";
+         echo"<a href='$base_url/products'>Continue Shopping</a> | <a href='$base_url/cart' onclick='loadingTheCart()'>Go to Cart</a>";
          echo"</div>";
          exit;
        }
@@ -66,6 +66,7 @@ function cartBuilder(){
    if($_REQUEST['task']=="remove"):
     $_SESSION['twotap_collector']=str_replace($_REQUEST['productId'],"",$_SESSION['twotap_collector']);
     $_SESSION['twotap_collector']=str_replace("||","|",$_SESSION['twotap_collector']);
+    
    endif;
 
     //Need to Do Some more Work, this will show the old cart values.
@@ -73,7 +74,13 @@ function cartBuilder(){
     if(sizeof($key['cart_value'])):
     $_SESSION['twoTapbackUpAttribs'][$key['details']->field_product_url_url]=$key['cart_value'];
     endif;
+    //Have to remove the backup Attrib as well
+    if($_REQUEST['deleteProductUrl'] and $_REQUEST['task']=="remove"):
+    $outerProductUrl=base64_decode($_REQUEST['deleteProductUrl']); // this is the product from where the client is showing the product.
+    unset($_SESSION['twoTapbackUpAttribs'][$outerProductUrl]);
+    endif;
     endforeach;
+
 
 //The funda here is to save the product 0,1 and so on, there no number discontinuity, everytime it starts with 0,1 and so on.
    $_SESSION['twotap_collector']=str_replace("||",'|',$_SESSION['twotap_collector']);
@@ -113,7 +120,7 @@ function cartBuilder(){
    $_SESSION['twoTapCartSorted']=$stores;
    echo"<div style='text-align:center;line-height:30px;'>";
    echo"<font color='green' size='2'><span style='color:green'> <b style='border-radius: 10px; padding: 2px 4px; background: none repeat scroll 0% 0% lightgreen;'>&#x2714;</b></span>  Product Added Successfully !</font><br>";
-   echo"<a href='$base_url/products'>Continue Shopping</a> | <a href='$base_url/cart'>Go to Cart</a>";
+   echo"<a href='$base_url/products'>Continue Shopping</a> | <a href='javascript:void(0)' onclick='loadingTheCart()'>Go to Cart</a>";
    echo"</div>";
 }
 
@@ -194,9 +201,19 @@ function addTwoTapJavascript(){
        function disperseCart(){
                 $('#darkOverlay').fadeOut();
                 $('#cartDiv').fadeOut();
-                $('#cartDiv').html('<img src=\'$ajaxLoader\' id=\'ajax_loader\' style=\'display:none;left:48%;top:48%;position:relative\'>');
+                $('#cartDiv').css('text-align','center').html('<img src=\'$ajaxLoader\' id=\'ajax_loader\' style=\'display:none;top:48%;position:relative\'>');
                 $('.cancelButton').hide();     
        } 
+
+       function loadingTheCart(){
+                $('#darkOverlay').fadeIn();
+                $('#cartDiv').fadeIn();
+                $('#cartDiv').css('text-align','center').html('<br>Please wait...<br><br><img src=\'$ajaxLoader\' id=\'ajax_loader\' style=\'display:none;top:45%;position:relative\'>');
+                $('#ajax_loader').show();
+                $('.cancelButton').show();
+                window.location='$base_url/cart';
+       }
+
             </script>";
     
     echo $javascript;
@@ -309,6 +326,7 @@ cursor:pointer;
     top: 35%;
     width: 225px;
     z-index: 501;
+    font-family:lucida sans unicode;
 }  
 
 .cancelButton{
@@ -350,6 +368,31 @@ function destroyCart(){
  unset($_SESSION['twoTapCartSorted']);
 }
 
+
+function checkProductAvailablityOnCartPage($statusArray){
+    
+    $errorMessageCollector=array();
+    foreach($statusArray['sites'] as $key):
+    if(sizeof($key['failed_to_add_to_cart'])):
+       foreach($key['failed_to_add_to_cart'] as $failKey):
+        $errorMessageCollector[]=$failKey['title'];
+       endforeach;
+    endif;
+    endforeach;
+       
+    if(sizeof($errorMessageCollector)):
+    $_SESSION['twoTapCart']['allProductsAvailable']=false;
+       drupal_set_message('The product(s) '.implode(", ",$errorMessageCollector)." are out of stock, please remove them from your cart to proceed further!",'error');
+    endif;
+    
+    if(!sizeof($errorMessageCollector)):
+    $_SESSION['twoTapCart']['allProductsAvailable']=true;
+    endif;
+    
+    return $_SESSION['twoTapCart']['allProductsAvailable'];
+    
+}
+
 function cartPage(){
     //destroyCart();
     
@@ -360,6 +403,9 @@ function cartPage(){
     $cart_id=twoTapAddToCart();
     $_SESSION['twotap_latest_cart_id']=$cart_id;
     $addToCartProductStatus=twoTapAddToCartStatus($cart_id);
+    ##CLient requirement, again check the availablity
+    checkProductAvailablityOnCartPage($addToCartProductStatus);
+    ###Client Requirement, check availability ends here.
     $i=0;
     foreach($_SESSION['twoTapCart'] as $key):
         $products[$i]=$key['details']->field_product_url_url;
@@ -408,9 +454,9 @@ function checkoutPageBuilder($apiData=""){
 
     
     
-    $html="<form method='post' action=''>";
+    $html="<form method='post' action='' onsubmit='return pleaseWaitOverlay()'>";
     $html.="<span id='cart_upper_links' style='float: right; position: relative; right: 10px; bottom: 25px;'><a href=''>Refresh</a></span>";
-    $html.="<table id='twoTapCart' cellspacing='0' cellpadding='0' style='width:100%;font-family:trebuchet ms;font-size:small'>";
+    $html.="<table id='twoTapCart' cellspacing='0' cellpadding='0' style='width:100%;font-family:lucida sans unicode;font-size:small'>";
     $html.="<tr style='color:white;background:black;height:40px;'><th style='padding-left:20px'>Item</th><th>Brand</th><th>Product Name</th><th>Price</th><th>Qty</th><th>Action</th><th>Subtotal</th></tr>";
     $grandTotal=0;
     foreach($stores as $key=>$value):
@@ -421,6 +467,7 @@ function checkoutPageBuilder($apiData=""){
         $price=number_format($price,2);
         $productId=$cart[$value][$i]['productId'];
         $productLink=$base_url."/product/".$productId;
+        $productUrlBase64=str_replace("=","",base64_encode($cart[$value][$i]['details']->field_product_url_url)); //this is for the product removal from the cart.
         $productImg="<a href='$productLink'><img src='$productImagePath' style='width:100px;height:150px'></a>";
         $html.="<tr><td style='padding:10px'>$productImg</td>";
         $html.="<td>{$cart[$value][$i]['details']->brand}</td>";
@@ -431,6 +478,7 @@ function checkoutPageBuilder($apiData=""){
               $attributeName=$productId."_".$val;
               $dep=base64_encode(serialize($cart[$value][$i]['product_status']['required_field_values'][$val]));
               $available_options.=" <select required='required' name='$attributeName' onchange=\"getDepthProducts(this.value,'$productId','$dep','$attributeName')\">";
+              $available_options.="<option value=''>-SELECT-</option>";
               $Attribcounter=0;  
                   foreach($cart[$value][$i]['product_status']['required_field_values'][$val] as $innerKey):
                   $optionVal=$innerKey['value'];
@@ -443,6 +491,7 @@ function checkoutPageBuilder($apiData=""){
                   $depthArray=$innerKey['dep'];  
                   endif;
                   //Select the depth Option for the first Item.
+                  $depthArray=$innerKey['dep']; //Just wrote this, coz i was getting a bug in depth dropdown.
                   if(!$optionValSelected and !$Attribcounter==0):
                   $depth=sizeof($innerKey['dep']);
                   $depthArray=$innerKey['dep'];
@@ -466,9 +515,9 @@ function checkoutPageBuilder($apiData=""){
                 $depthSelect.="<option value='$optVal' $optionValSelected>$text</option>";
                 $depthCounter++;
               endforeach;
-              $depthSelect=" <b>".ucfirst($depthKey)."</b> <select name='$productId"."_$depthKey'>$depthSelect</select>";
+              $depthSelect=" <b>".ucfirst($depthKey)."</b> <select name='$productId"."_$depthKey' required='required'><option value=''>-SELECT-</option>$depthSelect</select>";
               }
-              $subOption=($depth)?"<span id='$attributeName'>$depthSelect</span>":"";
+              $subOption=($depth)?"<span id='$attributeName'>$depthSelect</span>":"<span id='$attributeName'></span>";
               $available_options.="</select><br>$subOption";
               endif;
             endforeach;
@@ -482,7 +531,7 @@ function checkoutPageBuilder($apiData=""){
         $priceMultiple=number_format(($qtySelected*$price),2);
         $grandTotal+=($qtySelected*$price);
         $html.="<td><input type='number' min='1'  style='width:50px;' value='$qtySelected' name='$qtyName' onclick='changeQtyPrice($productId,this.value,$price)'></td>";
-        $html.="<td><input type='checkbox' onchange=\"removeItem(this)\" value='$productId' >Remove <br> $update</td>";
+        $html.="<td><input id='$productUrlBase64' type='checkbox' onchange=\"removeItem(this)\" value='$productId' >Remove <br> $update</td>";
         $html.="<td id='subtotal_$productId' class='indi_subtotal'>$$priceMultiple</td></tr>";
         endfor;
     endforeach;
@@ -493,28 +542,36 @@ function checkoutPageBuilder($apiData=""){
     $html.="<input type='hidden' name='grand_total' value='$grandTotal'>";
     $grandTotal=number_format($grandTotal,2);
     $html.="<tr style='background:wheat'><td colspan='6' style='padding:15px;text-align:right'>Grand Total</td><td id='grand_total'>$$grandTotal</td></tr>";
-    $html.="<tr><td colspan='9' style='padding:15px;text-align:right'><a style='background: none repeat scroll 0% 0% steelblue;text-decoration:none;color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;display:inline-block;float:left;position:relative;' href='$base_url/products'>Continue Shopping</a><input type='submit' name='submit_cart' value='Checkout' style='background: none repeat scroll 0% 0% steelblue; color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;'></td></tr>";
+    $actionButton=($_SESSION['twoTapCart']['allProductsAvailable'])?"type='submit'":"type='button' onclick=\"alert('Please remove the products which are out of stock from the cart!');\"";
+    $html.="<tr><td colspan='9' style='padding:15px;text-align:right'><a style='background: none repeat scroll 0% 0% steelblue;text-decoration:none;color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;display:inline-block;float:left;position:relative;' href='$base_url/products'>Continue Shopping</a><input $actionButton name='submit_cart' value='Checkout' style='background: none repeat scroll 0% 0% steelblue; color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;'></td></tr>";
     }
     $html.="</form>";
     $html.="</table>";
+
+    //Need to add a blackoverlay Client's requirement.
+    $html.=showCartOverLay();
+
     
     //We have to Create to new Cart were we can sort the whole cart.
-    checkOutCss();
-    checkOutJS();
+    $html.=checkOutCss();
+    $html.=checkOutJS();
 
     return $html;
 }
 
 
 function getDepthProducts(){
+  $depthisThere=0;
   $productId=$_POST['productId'];
   $currentVal=$_POST['curr_val'];
   $html="";
   $depArray=unserialize(base64_decode($_POST['dep']));
   //debug($depArray);
+  
   foreach($depArray as $key):
     if($currentVal==$key['value']):
     foreach($key['dep'] as $innerKey=>$innerValue):
+    $depthisThere=1;
     break;
     endforeach;
 
@@ -524,7 +581,7 @@ function getDepthProducts(){
     $html.="<option value='$optVal'>$text</option>";
     endforeach;
 
-    $html=" <b>".ucfirst($innerKey)."</b> <select name='$productId"."_$innerKey'>$html</select>";
+    $html=($depthisThere)?" <b>".ucfirst($innerKey)."</b> <select name='$productId"."_$innerKey' required='required'><option value=''>-SELECT-</option>$html</select>":"";
     echo $html;
     exit;
     endif;
@@ -556,10 +613,11 @@ function checkOutJS(){
             function getDepthProducts(curr_val,productId,dep,innerHTMLId){
              
              $.ajax({
-                        url: '{$base_url}/ajax-dep-products',
+                        url: 'ajax-dep-products',
                         data:{'productId':productId,'dep':dep,'curr_val':curr_val},
                         type: 'post',
-                        cache: false,
+                        async:false,
+                        cache:false,
                         dataType: 'text',
                         success:function(response){
                         $('#'+innerHTMLId).html(response);
@@ -572,11 +630,13 @@ function checkOutJS(){
               if(e.checked){
               conf=window.confirm("Are you sure you want to remove this item from cart ?");
               if(conf){
+                pleaseWaitOverlay();
                 $.ajax({
-                        url: '{$base_url}/add-to-cart',
-                        data:{'productId':e.value,'task':'remove'},
+                        url: 'add-to-cart',
+                        data:{'productId':e.value,'deleteProductUrl':e.id,'task':'remove'},
                         type: 'post',
-                        cache: false,
+                        cache:false,
+                        async:false,
                         dataType: 'text',
                         success:function(response){
                          location='';
@@ -588,10 +648,29 @@ function checkOutJS(){
               }
             }
           }
+
+
+
+          function pleaseWaitOverlay(){
+
+            $('#darkOverlay').fadeIn();
+            $('#cartDiv').fadeIn();
+            $("#ajax_loader").css('top','8%').show();
+            $('#cartDiv').append('<br><br><br>Processing your request, Please wait...');
+            $('.cancelButton').hide(); 
+            return true;
+          }
+
+           function disperseCart(){
+                $('#darkOverlay').fadeOut();
+                $('#cartDiv').fadeOut();
+                $('#cartDiv').css('text-align','center').html('<img src=\'$ajaxLoader\' id=\'ajax_loader\' style=\'display:none;top:48%;position:relative\'>');
+                $('.cancelButton').hide();     
+       } 
 </script>
 EOD;
     
-    echo $str;
+    return $str;
 }
 
 function confirmCheckoutPage(){
@@ -645,6 +724,13 @@ function getShippingAddressDetails(){
 
 function userInfoTable(){
   global $base_url,$user;
+  unset($_SESSION['twoTapCart']['price_estimate']);
+    
+  if(!$_SESSION['twoTapCart']['allProductsAvailable']):
+    header("Location:$base_url/cart");
+    exit;
+  endif;
+    
 //debug($_POST);
 //debug($_SESSION['twoTapCart']);
 
@@ -691,34 +777,37 @@ if($_POST['submit_address']):
   endif;
 
   getShippingAddressDetails();
+  
   $purchase_estimates=getPurchaseEstimates();
-  $purchaseEstimateInformation="";
-  if($purchase_estimates['message']=="done"):
-    $purchaseEstimateInformation="<br><h1 style='width:92%;margin:auto'>Purchase Estimation</h1><br>";
-    foreach($purchase_estimates['estimates'] as $peKey):
-      $shippingPrice+=str_replace("$","",$peKey['prices']['shipping_price']);
-      $salesTax+=str_replace("$","",$peKey['prices']['sales_tax']);
-      $finalPrice+=str_replace("$","",$peKey['prices']['final_price']);
-    endforeach;
-    $purchaseEstimateInformation.="<label style='margin-left:30px;width:120px;display:inline-block'>Shipping Price</label>: $".$shippingPrice."<br>";
-    $purchaseEstimateInformation.="<label style='margin-left:30px;width:120px;display:inline-block'>Sales Tax</label>: $".$salesTax."<br>";
-    $purchaseEstimateInformation.="<label style='margin-left:30px;width:120px;display:inline-block;font-weight:bold'>Final Price</label>: <font color='seagreen' style='font-weight: bold; border-radius: 10px; padding: 3px 10px; box-shadow: 0px 0px 10px lightgrey inset; border: 1px solid lightblue;'>$".$finalPrice."</font><br>";
-  endif;
-
-  //Lets strore the billing address and shipping adress as well.
-  //debug(twoTapAddToCartStatus($_SESSION['twotap_latest_cart_id']));
+$purchaseEstimateInformation="";
+if($purchase_estimates['message']=="done"):
+$purchaseEstimateInformation="<br><h1 style='width:92%;margin:auto'>Purchase Estimation</h1><br>";
+foreach($purchase_estimates['estimates'] as $peKey):
+$shippingPrice+=str_replace("$","",$peKey['prices']['shipping_price']);
+$salesTax+=str_replace("$","",$peKey['prices']['sales_tax']);
+$finalPrice+=str_replace("$","",$peKey['prices']['final_price']);
+endforeach;
+$purchaseEstimateInformation.="<label style='margin-left:30px;width:120px;display:inline-block'>Shipping Price</label>: $".$shippingPrice."<br>";
+$purchaseEstimateInformation.="<label style='margin-left:30px;width:120px;display:inline-block'>Sales Tax</label>: $".$salesTax."<br>";
+$purchaseEstimateInformation.="<label style='margin-left:30px;width:120px;display:inline-block;font-weight:bold'>Final Price</label>: <font color='seagreen' style='font-weight: bold; border-radius: 10px; padding: 3px 10px; box-shadow: 0px 0px 10px lightgrey inset; border: 1px solid lightblue;'>$".$finalPrice."</font><br>";
+endif;
+  
   $form="<hr><br><br>";
-  $form.="<form method='post' action=''>";
-  $form.=miniCart($_SESSION['twoTapCart']);
+  $form.="<form method='post' action='' onsubmit='return pleaseWaitOverlay()' style='font-family:lucida sans unicode'>";
+  $form.=miniCart($_SESSION['twoTapCart'],'',$finalPrice);
   $form.="<div style='margin-left:30px;margin-right:30px'><h1>Choose Shipping Options </h1><br>";
   $shipping_options=getShippingOptions();
-  $shippingCounter=0;
-  foreach($shipping_options as $key):
-    $checked=(!$shippingCounter)?"checked='checked'":"";
+  foreach($shipping_options as $key): 
+     $shippingCounter=0;
     foreach($key as $sk=>$sv):
-  $form.="<input type='radio' value='$sk' $checked name='chosen_shipping'> $sv<br>";
-    endforeach;
+    $checked="";
+    if($_POST['chosen_shipping']==$sk)
+    $checked="checked='checked'";
+    if(!$_POST['chosen_shipping'])
+    $checked="checked='checked'";
+    $form.="<input type='radio' value='$sk' $checked name='chosen_shipping'> $sv<br>";
     $shippingCounter++;
+    endforeach;
   endforeach;
   $form.="</div>";
   $form.=$purchaseEstimateInformation;
@@ -814,10 +903,11 @@ $form.="<label style='width:120px;display:inline-block'>CVV</label><input type='
 $form.="</div>";
 
 $cartUrl=$base_url."/cart";
-$form.="<a style='background: none repeat scroll 0% 0% steelblue;text-decoration:none;color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;display:inline-block;float:left;left:4%;position:relative;margin-top:30px;margin-bottom:30px' href='$cartUrl'>Go Cart</a>
-<input name='submit_address' value='View Purchase Estimates' type='submit' style='background: none repeat scroll 0% 0% steelblue; color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;display:inline-block;float:left;left:30%;position:relative;margin-top:30px;margin-bottom:30px'>
+$form.="<a style='background: none repeat scroll 0% 0% steelblue;text-decoration:none;color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;display:inline-block;float:left;left:4%;position:relative;margin-top:30px;margin-bottom:30px' href='$cartUrl' onclick='pleaseWaitOverlay()'>Go Cart</a>
+<input name='submit_address' value='View Purchase Estimates' type='submit' style='background: none repeat scroll 0% 0% steelblue; color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;display:none;float:left;left:30%;position:relative;margin-top:30px;margin-bottom:30px'>
 <input name='submit_address' value='Go Checkout' type='submit' style='background: none repeat scroll 0% 0% steelblue; color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;display:inline-block;float:right;right:4%;position:relative;margin-top:30px;margin-bottom:30px'>";
   $form.="</form>";
+  $form.=showCartOverLay();
 
   $css = <<<EOD
 <style>
@@ -832,13 +922,13 @@ label{
 }
 form h1{
   border-bottom: 1px solid lightgrey;
-    border-radius: 37px;
-    box-shadow: 0 0 10px grey inset;
-    color: steelblue;
-    font-family: trebuchet ms;
+    box-shadow: 0 0 10px grey;
+    color: white;
+    font-family:lucida sans unicode;
     padding: 10px 15px;
     text-shadow:0 0 10px forestgreen;
-    font-weight:bold;
+    font-weight:normal;
+    background:black;
 }
 .shipping_address{
   display:inline-block;
@@ -846,15 +936,80 @@ form h1{
   margin-left:30px;
   margin-top:30px;
 }
+
+input[type='submit']{
+font-family:lucida sans unicode;
+}
+
+    #darkOverlay{
+    background: none repeat scroll 0 0 black;
+    //background:white;
+    display: none;
+    height: 100%;
+    opacity: 0.7;
+    position: absolute;
+    top: 0;
+    left:0;
+    width: 100%;
+    z-index:501;
+    position:fixed;
+}
+#cartDiv{
+    background: none repeat scroll 0 0 white;
+    border: 15px solid black;
+    border-radius: 20px;
+    display: none;
+    height: 50px;
+    left: 39%;
+    line-height: 10px;
+    padding: 10px 30px 30px;
+    position: fixed;
+    top: 35%;
+    width: 225px;
+    z-index: 501;
+    font-family:lucida sans unicode;
+}  
+
+.cancelButton{
+    background: none repeat scroll 0 0 white;
+    border-radius: 33px;
+    color: black;
+    font-size: 20px;
+    left: 61%;
+    padding: 3px 9px;
+    position: fixed;
+    top: 33%;
+    z-index: 100000;
+    display:none;
+    text-decoration:none !important;
+
 </style>
 
 <script>
 ChangeShippingAddress();
 
+ //One more thing, the same billing address has to be checked, if all the parameters are correct. 
+ if($(".shipping_address #country").val()==$(".billing_address  #country").val() && $(".shipping_address #title").val()==$(".billing_address #title").val() && $(".shipping_address #first_name").val()==$(".billing_address #first_name").val() && $(".shipping_address #last_name").val()==$(".billing_address #last_name").val() && $(".shipping_address #address").val()==$(".billing_address  #address").val() && $(".shipping_address #city").val()==$(".billing_address  #city").val() && $(".shipping_address #state").val()==$(".billing_address  #state").val() && $(".shipping_address #zip").val()==$(".billing_address  #zip").val() && $(".shipping_address #telephone").val()==$(".billing_address  #telephone").val()){
+ document.getElementById('same_billing_address').checked=true;
+ }
+ else
+ {
+ document.getElementById('same_billing_address').checked=false;
+ }
+
 $(".billing_address input[type='text'], .billing_address select").bind("keyup change",function(){
 ChangeShippingAddress();
 });
 
+function pleaseWaitOverlay(){
+
+            $('#darkOverlay').fadeIn();
+            $('#cartDiv').fadeIn();
+            $("#ajax_loader").css('top','8%').show();
+            $('#cartDiv').append('<br><br><br>Processing your request, Please wait...');
+            $('.cancelButton').hide(); 
+            return true;
+          }
 
 function ChangeShippingAddress(){
   is_checked=document.getElementById('same_billing_address').checked;
@@ -869,7 +1024,11 @@ function ChangeShippingAddress(){
     $(".shipping_address #zip").val($(".billing_address  #zip").val());
     $(".shipping_address #telephone").val($(".billing_address  #telephone").val());
   }
-
+  
+  
+ 
+ 
+ 
 }
 </script>
 EOD;
@@ -919,7 +1078,7 @@ label{
   padding:10px;
   display:inline-block;
   font-weight:bold;
-  font-family:trebuchet ms;
+  font-family:lucida sans unicode;
 }
 td{
   padding:10px;
@@ -1015,7 +1174,7 @@ return $countries;
 function miniCart($cart,$time="present"){
   //debug($cart);
   $smallCart="<h1 style='margin-left:30px;margin-right:30px;'>Your Cart</h1>";
-  $smallCart.="<table style='width:94%;font-family:trebuchet ms;margin:30px;font-size:small;box-shadow:0 0 10px;color:grey'>";
+  $smallCart.="<table style='width:94%;font-family:lucida sans unicode;margin:30px;font-size:small;box-shadow:0 0 10px;color:grey'>";
   $smallCart.="<tr><th>Description</th><th>Brand</th><th>Quantity</th><th>Price/Qty</th><th>Subtotal</th></tr>";
   foreach($cart as $key):
   $options="";
@@ -1033,7 +1192,11 @@ function miniCart($cart,$time="present"){
   $smallCart.="<tr><td>{$key['details']->field_name_value}<br>$options</td><td>{$key['details']->brand}</td><td style='padding-left:20px'>{$key['cart_value']['quantity']}</td><td>$$price</td><td>$$priceMultiple</td></tr>";
   endforeach;
   $grand_total=number_format($grand_total,2);
-  $smallCart.="<tr style='background:steelblue;color:white;'><td colspan='4' align='right'>Grand Total :</td><td>$$grand_total</td></tr>";
+  $smallCart.="<tr style='background:steelblue;color:white;'><td colspan='4' align='right'>Grand Sub-Total :</td><td>$$grand_total</td></tr>";
+  
+  if($cart['price_estimate']['final_price']):
+  $smallCart.="<tr style='background:steelblue;color:white;border-top:1px solid lightgrey;font-weight:bold'><td colspan='4' align='right'>Final Price (Including Taxes):</td><td>$".number_format($cart['price_estimate']['final_price'],2)."</td></tr>";
+  endif;
   $smallCart.="</table>";
   $smallCart.="
 <style>
@@ -1054,12 +1217,14 @@ return $smallCart;
 
 
 function checkOutCss(){
-    echo"
+    $css="
     <style>
     #twoTapCart td{
     border-top:1px dashed lightgrey;
     }
-
+    input[type='submit'],input[type='button']{
+    font-family:lucida sans unicode;
+    }
     #cart_upper_links a{
     border-radius: 10px;
     box-shadow: 0 0 10px grey inset;
@@ -1068,7 +1233,52 @@ function checkOutCss(){
     padding: 3px 15px;
     text-decoration: none;
     }
+    #darkOverlay{
+    background: none repeat scroll 0 0 black;
+    //background:white;
+    display: none;
+    height: 100%;
+    opacity: 0.7;
+    position: absolute;
+    top: 0;
+    left:0;
+    width: 100%;
+    z-index:501;
+    position:fixed;
+}
+#cartDiv{
+    background: none repeat scroll 0 0 white;
+    border: 15px solid black;
+    border-radius: 20px;
+    display: none;
+    height: 50px;
+    left: 39%;
+    line-height: 10px;
+    padding: 10px 30px 30px;
+    position: fixed;
+    top: 35%;
+    width: 225px;
+    z-index: 501;
+    font-family:lucida sans unicode;
+}  
+
+.cancelButton{
+    background: none repeat scroll 0 0 white;
+    border-radius: 33px;
+    color: black;
+    font-size: 20px;
+    left: 61%;
+    padding: 3px 9px;
+    position: fixed;
+    top: 33%;
+    z-index: 100000;
+    display:none;
+    text-decoration:none !important;
+
+}
     </style>";
+
+    return $css;
 }
 
 function twoTapAddToCart(){
@@ -1115,28 +1325,49 @@ function twoTapPurchase(){
 }
 
 
-function getPurchaseEstimates(){
-  $_SESSION['twotap_bad_fields']="";
+function getPurchaseEstimates()
+{
+    $_SESSION['twotap_bad_fields']="";
     $cart_id=$_SESSION['twotap_latest_cart_id'];
     $base_path=getcwd();
     $sdk=$base_path."/".drupal_get_path('module','twotapmart')."/twotap-sdk/twoTap.php";
     include_once($sdk);
     $field_inputs=get_myfield_inputs();
-    $response=purchase_estimates($cart_id,$field_inputs);   
+    $response=purchase_estimates($cart_id,$field_inputs); 
     // debug($response);
     // exit;
     return $response;
 }
 
-function twoTapPurchaseInfoStatus(){
+function getPurchaseEstimatesNew(){
+    $cart_id=$_SESSION['twotap_latest_cart_id'];
+    $base_path=getcwd();
+    $sdk=$base_path."/".drupal_get_path('module','twotapmart')."/twotap-sdk/twoTap.php";
+    include_once($sdk);
+    $field_inputs=get_myfield_inputs();
+    $response=purchase_info($cart_id,$field_inputs);
+    $pec=twoTapPurchaseInfoStatus($response['purchase_id']);
+    $purchaseEstimates=array();
+    $purchaseEstimates['message']=$pec['message'];
+    foreach($pec['sites'] as $key=>$value):
+    $purchaseEstimates['estimates'][$key]['prices']=$pec['sites'][$key]['prices'];
+    endforeach;
+    
+    return $purchaseEstimates;
+}
+
+
+
+function twoTapPurchaseInfoStatus($purchase_id=""){
     global $base_url;
     ini_set("max_exectution_time",3000);
-    $purchase_id=$_SESSION['twotap_latest_purchase_id'];
+    $purchase_id=($purchase_id)?$purchase_id:$_SESSION['twotap_latest_purchase_id'];
     $sdk=$base_path."/".drupal_get_path('module','twotapmart')."/twotap-sdk/twoTap.php";
     include_once($sdk);
     $response=purchase_info_status($purchase_id);
-    // debug($response);
-    // exit;
+    
+//     debug($response);
+//     exit;
     if($response['message']=="has_failures"):
     foreach($response['sites'] as $key):
     $_SESSION['twotap_bad_fields'].=implode("<br>",$key['status_messages']);
@@ -1149,25 +1380,42 @@ function twoTapPurchaseInfoStatus(){
     $_SESSION['twotap_bad_fields'].=$response['description']; 
     endif;
 
-
+    
+//  $purchaseEstimateInformation="";
+  if($response['message']=="done"):
+    $shippingPrice=$salesTax=$finalPrice="";
+    foreach($response['sites'] as $peKey=>$peVal):
+      $shippingPrice+=str_replace("$","",$response['sites'][$peKey]['prices']['shipping_price']);
+      $salesTax+=str_replace("$","",$response['sites'][$peKey]['prices']['sales_tax']);
+      $finalPrice+=str_replace("$","",$response['sites'][$peKey]['prices']['final_price']);
+    endforeach;
+    
+    //We have to store this value in our session as well.
+    $_SESSION['twoTapCart']['price_estimate']['final_price']=$finalPrice;
+    $_SESSION['twoTapCart']['price_estimate']['sales_tax']=$salesTax;
+    $_SESSION['twoTapCart']['price_estimate']['shipping_price']=$shippingPrice;
+    //stored price estimate in the twotapCart, which was client requirement.
+    endif;
+    
+    
     return $response;
 }
 
 function twoTapConfirmPurchase(){
   global $base_url;
+  displayErrors();
     $purchase_id=$_SESSION['twotap_latest_purchase_id'];
+    $base_path=getcwd();
     $sdk=$base_path."/".drupal_get_path('module','twotapmart')."/twotap-sdk/twoTap.php";
     include_once($sdk);
     $response=purchase_confirm($purchase_id);
-    // debug($response);
-    // exit;
 
     if($response['message']=="failed"):
     $_SESSION['twotap_bad_fields']=$response['description'];
     endif;
 
-    // debug($response);
-    // exit;
+//     debug($response);
+//     exit;
 
     return $response;
 }
@@ -1179,7 +1427,7 @@ function twoTapConfirmPurchaseStatus(){
     $sdk=$base_path."/".drupal_get_path('module','twotapmart')."/twotap-sdk/twoTap.php";
     include_once($sdk);
     $response=purchase_confirm_status($purchase_id);
-    if($response['message']=="has_failures"):
+    if($response['message']=="has_failures" or $response['message']=="invalid_status"):
     $_SESSION['twotap_bad_fields']=$response['description']."<br>";
     foreach($response['sites'] as $key):
     $errors=array();
@@ -1198,10 +1446,6 @@ function BUY_PRODUCTS(){
   twoTapPurchase();
   if(!$_SESSION['twotap_bad_fields'])
   twoTapPurchaseInfoStatus();
-  if(!$_SESSION['twotap_bad_fields'])
-  twoTapConfirmPurchase();
-  // if(!$_SESSION['twotap_bad_fields'])
-  // twoTapConfirmPurchaseStatus();
 }
 
 function displayErrors(){
@@ -1215,11 +1459,10 @@ function confirmPurchaseTwoTap(){
   global $base_url;
   ini_set("max_exectution_time",3000);
   if($_REQUEST['confirm_purchase_status_last_step']){
+  $purchase=twoTapConfirmPurchase();
   $response=twoTapConfirmPurchaseStatus();
-  // debug($response);
-  // debug($_SESSION['twotap_bad_fields']);
-  // exit;
-  if($response['message']=="done"):
+
+  if($response['message']=="done" && ($purchase['message']=="done" or $purchase['message']=="still_processing")):
   header("location:".$base_url."/checkout-status");
   exit;
   endif;
@@ -1229,15 +1472,24 @@ function confirmPurchaseTwoTap(){
   endif;
 
   }
-
-  $html="";
-  $html.="<hr><form method='post' action='/development/beta/confirm-purchase' accept-charset='UTF-8'>";
-  $html.="<br><br><input type='checkbox' required='required' value='1' style='margin-left:40px;float:left'><span style='float: left; color: green; position: relative; font-size: 17px; top: 0px;'>All data given by me are absolutely correct as per my knowledge is concerned.(Please check the box to confirm your purchase)</span><br>";
-  $html.="<a href='$base_url/checkout' style='background: none repeat scroll 0% 0% steelblue; color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;display:inline-block;float:left;left:4%;position:relative;margin-top:30px;margin-bottom:30px;text-decoration:none'><< Checkout</a>";
+ 
+  $html="<span style='font-family:lucida sans unicode;'>";
+  $purchaseEstimateInformation="<br><h1 style='width:92%;margin:auto;border-bottom: 1px solid lightgrey;box-shadow: 0 0 10px grey;color: white;font-family:lucida sans unicode;padding: 10px 15px;text-shadow:0 0 10px forestgreen;font-weight:normal;background:black;'>Purchase Estimation</h1><br>";
+  $purchaseEstimateInformation.="<label style='padding:7px;margin-left:30px;width:120px;display:inline-block'>Shipping Price</label>: $".number_format($_SESSION['twoTapCart']['price_estimate']['shipping_price'],2)."<br>";
+  $purchaseEstimateInformation.="<label style='padding:7px;margin-left:30px;width:120px;display:inline-block'>Sales Tax</label>: $".number_format($_SESSION['twoTapCart']['price_estimate']['sales_tax'],2)."<br>";
+  $purchaseEstimateInformation.="<div style='font-size:15px;color:white;background:steelblue;width: 95%;margin: auto;padding-left: 0px;'><label style='padding:7px;margin-left:3px;width:120px;display:inline-block;font-weight:bold'>Final Price</label>: <font color='white' style='font-weight: bold; border-radius: 10px;'>$".number_format($_SESSION['twoTapCart']['price_estimate']['final_price'],2)."</font> (Inclusive all charges)</div>";
+  
+  $html.="<hr>$purchaseEstimateInformation<br><form method='post' action='/development/beta/confirm-purchase' accept-charset='UTF-8' onsubmit='pleaseWaitOverlay()'>";
+  $html.="<input type='checkbox' required='required' value='1' style='margin-left:40px;float:left'><span style='font-family:lucida sans unicode;float: left; color: green; position: relative; font-size: 15px; top: 0px;'>This is the final charge you will be charged.You have two minutes to confirm.</span>";
+  $html.="<div style='clear:both'></div><a onclick='pleaseWaitOverlay()' href='$base_url/checkout' style='background: none repeat scroll 0% 0% steelblue; color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;display:inline-block;float:left;left:4%;position:relative;margin-top:30px;margin-bottom:30px;text-decoration:none'><< Checkout</a>";
 
   $html.="<input value='Confirm Purchase' type='submit' name='confirm_purchase_status_last_step' style='background: none repeat scroll 0% 0% steelblue; color: white; padding: 10px 25px; cursor: pointer; border: 1px none; box-shadow: 0px 0px 10px grey; border-radius: 76px 5px;display:inline-block;float:right;right:4%;position:relative;margin-top:30px;margin-bottom:30px'>";
   $html.="<input type='hidden'>";
   $html.="</form>";
+  $html.=showCartOverLay();
+  $html.=checkOutCss();
+  $html.=checkOutJS();
+  $html.="</span>";
 
   return $html;
 }
@@ -1291,8 +1543,8 @@ function checkProductAvailability($productId){
     $productArray['products'][0]=$product_url;
     $cart_id=add_to_cart($productArray);
     $response=add_to_cart_status($cart_id);
+    //debug($response);
     $result=($response['message']=="done")?true:false;
-
 
     //please update the product rate in the database as well, this will create a superb synchronization option for me.
     if($result):
@@ -1302,7 +1554,6 @@ function checkProductAvailability($productId){
     db_query("UPDATE content_type_product SET field_original_price_value='$price' WHERE nid='$productId'");
     endforeach;
     endif;
-
 
   return $result;
 }
@@ -1346,7 +1597,7 @@ function showCustomerOrders(){
   $css="<style>
   table{
     margin-top:15px;
-    font-family:trebuchet ms;
+    font-family:lucida sans unicode;
     font-size:small;
     color:grey;
   }
@@ -1416,7 +1667,7 @@ label{
 #mainContent h1{
     border-bottom: 1px solid lightgrey;
     color: white;
-    font-family: trebuchet ms;
+    font-family:lucida sans unicode;
     padding: 5px 10px;
     text-shadow:0 0 10px forestgreen;
     background:black;
@@ -1436,7 +1687,7 @@ label{
   width:100px;
   display:inline-block;
   padding:10px;
-  font-family:trebuchet ms;
+  font-family:lucida sans unicode;
   font-weight:bold;
 }
 table{
@@ -1472,6 +1723,11 @@ $order.="<label>Transaction Id </label>: $rec->purchase_id"."<br>";
 $order.="<label>Purchased On </label>: ".date("m-d-Y, h:i A",strtotime($rec->purchased_on))."<br>";
 $order.=miniCart(unserialize(base64_decode($rec->purchase_details)));
 $pd=unserialize(base64_decode($rec->purchase_details));
+$order.="<h1>Purchase Estimate</h1>";
+$order.="<label>Shipping Price</label>:$".number_format($pd['price_estimate']['shipping_price'],2)."<br>";
+$order.="<label>Sales Tax</label>:$".number_format($pd['price_estimate']['sales_tax'],2)."<br>";
+$order.="<label>Final Price</label>:$".number_format($pd['price_estimate']['final_price'],2)."<br><br>";
+
 $order.="<h1>Address Details</h1>";
 $order.="<table style='margin:30px;width:94%'>";
 $order.="<tr><th>Billing Address</th><th>Shipping Address</th></tr>";
@@ -1497,7 +1753,7 @@ $order.="<h1>Shipping Option</h1>";
 $order.="<div style='background:lightyellow;margin:30px;padding:10px;'>".ucfirst($pd['billing_address']['chosen_shipping'])."</div>";
 $order.=$css;
 $order.="</form>";
-$order="<div style='width:94%;margin:auto;font-family:trebuchet ms'>$order</div>";
+$order="<div style='width:94%;margin:auto;font-family:lucida sans unicode'>$order</div>";
 return $order;
 endwhile;
 }
